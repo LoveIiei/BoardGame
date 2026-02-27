@@ -5,12 +5,12 @@ Play classic strategy games against a friend locally or challenge the built-in A
 
 ## Games
 
-| Game | Board | AI | Description |
-|------|-------|----|-------------|
-| **Tic-Tac-Toe** | 3 x 3 | Minimax (perfect play) | The classic noughts and crosses |
-| **Gomoku** | 15 x 15 | Alpha-beta, depth 3 | Five in a row wins |
-| **Chess** | 8 x 8 | Alpha-beta, depth 3 | Full FIDE rules (castling, en passant, promotion) |
-| **Chinese Chess (Xiangqi)** | 10 x 9 | Alpha-beta, depth 3 | Traditional rules with flying general enforcement |
+| Game | Board | AI | Description | Screenshot |
+|------|-------|----|-------------|-----------|
+| **Tic-Tac-Toe** | 3 x 3 | Minimax (perfect play) | The classic noughts and crosses | |
+| **Gomoku** | 15 x 15 | Alpha-beta, depth 3 | Five in a row wins | ![img](./assets/gomoku.png) |
+| **Chess** | 8 x 8 | Alpha-beta, depth 3 | Full FIDE rules (castling, en passant, promotion) | ![img](./assets/chess.png) |
+| **Chinese Chess (Xiangqi)** | 10 x 9 | Alpha-beta, depth 3 | Traditional rules with flying general enforcement | ![img](./assets/xiangqi.png) |
 
 Every game supports **PvE** (vs AI) and **PvP** (local two-player) modes.
 
