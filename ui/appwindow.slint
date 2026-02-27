@@ -1,0 +1,329 @@
+import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export struct ChessCell {
+    piece: string,
+    is-valid-move: bool,
+    is-selected: bool,
+}
+
+export struct XiangqiCell {
+    piece: string,
+    piece-color: string,    // "red", "black", or ""
+    is-valid-move: bool,
+    is-selected: bool,
+}
+
+export component AppWindow inherits Window {
+    title: "Strategy Game Hub";
+    width: 600px;
+    height: 750px;
+    background: #282c34;
+
+    // App State
+    in-out property <string> current_page: "menu"; // "menu", "ttt", "gomoku", "chess", "xiangqi"
+    in-out property <string> status_text: "Welcome!";
+
+    // Board Data
+    in-out property <[string]> ttt_board: ["", "", "", "", "", "", "", "", ""];
+    in-out property <[string]> gomoku_board;
+    in-out property <[ChessCell]> chess_board;
+    in-out property <[XiangqiCell]> xiangqi_board;
+
+    // Last move highlight
+    in-out property <int> last_move: -1;
+    in-out property <int> chess_last_move_from: -1;
+    in-out property <int> chess_last_move_to: -1;
+    in-out property <int> xiangqi_last_move_from: -1;
+    in-out property <int> xiangqi_last_move_to: -1;
+
+    // Music
+    in-out property <bool> music_playing: false;
+    callback toggle_music();
+
+    // Callbacks to Rust
+    callback start_game(string, string); // (game_type, game_mode)
+    callback cell_clicked(int);
+    callback return_to_menu();
+
+    // --- MAIN MENU ---
+    if root.current_page == "menu" : VerticalBox {
+        alignment: center;
+        spacing: 30px;
+        padding: 40px;
+
+        Text {
+            text: "Select a Game";
+            font-size: 36px;
+            font-weight: 800;
+            color: white;
+            horizontal-alignment: center;
+        }
+
+        VerticalBox {
+            spacing: 15px;
+            alignment: center;
+
+            Text { text: "Tic-Tac-Toe"; color: #abb2bf; font-size: 18px; horizontal-alignment: center; }
+            HorizontalBox {
+                spacing: 20px; alignment: center;
+                Button { text: "1 Player (vs AI)"; width: 150px; clicked => { root.start_game("ttt", "pve"); } }
+                Button { text: "2 Players (Local)"; width: 150px; clicked => { root.start_game("ttt", "pvp"); } }
+            }
+
+            Rectangle { height: 20px; }
+
+            Text { text: "Gomoku (Five in a Row)"; color: #abb2bf; font-size: 18px; horizontal-alignment: center; }
+            HorizontalBox {
+                spacing: 20px; alignment: center;
+                Button { text: "1 Player (vs AI)"; width: 150px; clicked => { root.start_game("gomoku", "pve"); } }
+                Button { text: "2 Players (Local)"; width: 150px; clicked => { root.start_game("gomoku", "pvp"); } }
+            }
+
+            Rectangle { height: 20px; }
+
+            Text { text: "Chess"; color: #abb2bf; font-size: 18px; horizontal-alignment: center; }
+            HorizontalBox {
+                spacing: 20px; alignment: center;
+                Button { text: "1 Player (vs AI)"; width: 150px; clicked => { root.start_game("chess", "pve"); } }
+                Button { text: "2 Players (Local)"; width: 150px; clicked => { root.start_game("chess", "pvp"); } }
+            }
+
+            Rectangle { height: 20px; }
+
+            Text { text: "Chinese Chess (Xiangqi)"; color: #abb2bf; font-size: 18px; horizontal-alignment: center; }
+            HorizontalBox {
+                spacing: 20px; alignment: center;
+                Button { text: "1 Player (vs AI)"; width: 150px; clicked => { root.start_game("xiangqi", "pve"); } }
+                Button { text: "2 Players (Local)"; width: 150px; clicked => { root.start_game("xiangqi", "pvp"); } }
+            }
+
+            Rectangle { height: 20px; }
+
+            Button {
+                text: root.music_playing ? "Music: ON" : "Music: OFF";
+                width: 150px;
+                clicked => { root.toggle_music(); }
+            }
+        }
+    }
+
+    // --- GAME BOARDS ---
+    if root.current_page != "menu" : VerticalBox {
+        alignment: center;
+        spacing: 20px;
+        padding: 20px;
+
+        Text {
+            text: root.status_text;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            horizontal-alignment: center;
+        }
+
+        // Tic-Tac-Toe Grid
+        if root.current_page == "ttt" : Rectangle {
+            width: 300px; height: 300px;
+            GridLayout {
+                spacing: 10px;
+                for cell_text[index] in root.ttt_board: Rectangle {
+                    background: index == root.last-move ? #4e5563 : #3e4451;
+                    border-radius: 8px;
+                    border-width: 2px;
+                    border-color: index == root.last-move ? #61afef : transparent;
+                    row: Math.floor(index / 3); col: Math.mod(index, 3);
+                    TouchArea { clicked => { root.cell_clicked(index); } }
+                    Text {
+                        text: cell_text; font-size: 48px; font-weight: 900;
+                        color: cell_text == "X" ? #98c379 : #e06c75;
+                        horizontal-alignment: center; vertical-alignment: center;
+                        opacity: cell_text == "" ? 0.0 : 1.0;
+                        animate opacity { duration: 200ms; easing: ease-out; }
+                    }
+                }
+            }
+        }
+
+        // Gomoku Grid
+        if root.current_page == "gomoku" : Rectangle {
+            width: 500px; height: 500px;
+            GridLayout {
+                spacing: 2px;
+                for cell_text[index] in root.gomoku_board: Rectangle {
+                    background: index == root.last-move ? #e8a84c : #d18b47;
+                    border-width: 2px;
+                    border-color: index == root.last-move ? #ff6b6b : #8b5a2b;
+                    row: Math.floor(index / 15); col: Math.mod(index, 15);
+                    TouchArea { clicked => { root.cell_clicked(index); } }
+                    Text {
+                        text: cell_text; font-size: 20px; font-weight: 900;
+                        color: cell_text == "X" ? #000000 : #ffffff;
+                        horizontal-alignment: center; vertical-alignment: center;
+                        opacity: cell_text == "" ? 0.0 : 1.0;
+                        animate opacity { duration: 200ms; easing: ease-out; }
+                    }
+                }
+            }
+        }
+
+        // Chess Grid
+        if root.current_page == "chess" : Rectangle {
+            width: 480px; height: 480px;
+            GridLayout {
+                spacing: 0px;
+                for cell[index] in root.chess_board: Rectangle {
+                    property <bool> is-light: Math.mod(Math.floor(index / 8) + Math.mod(index, 8), 2) == 0;
+                    property <bool> is-last-move: index == root.chess_last_move_from || index == root.chess_last_move_to;
+
+                    background: cell.is-selected ? #829769
+                        : cell.is-valid-move ? (is-light ? #e8e092 : #b8a832)
+                        : is-last-move ? (is-light ? #f5f682 : #baca44)
+                        : (is-light ? #f0d9b5 : #b58863);
+
+                    row: Math.floor(index / 8); col: Math.mod(index, 8);
+
+                    TouchArea { clicked => { root.cell_clicked(index); } }
+
+                    // Valid move dot (empty square) — always present, visibility toggled
+                    Rectangle {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 8px;
+                        background: cell.is-valid-move && cell.piece == "" ? #00000040 : transparent;
+                    }
+                    // Valid move ring (capturable piece) — always present, visibility toggled
+                    Rectangle {
+                        width: parent.width;
+                        height: parent.height;
+                        border-width: 4px;
+                        border-color: cell.is-valid-move && cell.piece != "" ? #00000040 : transparent;
+                        background: transparent;
+                    }
+
+                    Text {
+                        text: cell.piece;
+                        font-size: 40px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // Xiangqi Grid — two halves with a river gap between rows 4 and 5
+        if root.current_page == "xiangqi" : VerticalLayout {
+            alignment: center;
+            spacing: 0px;
+            // Top half (Black's side, rows 0-4)
+            Rectangle {
+                width: 450px; height: 250px;
+                GridLayout {
+                    spacing: 0px;
+                    for cell[index] in root.xiangqi_board: Rectangle {
+                        property <int> r: Math.floor(index / 9);
+                        property <bool> is-last-move: index == root.xiangqi_last_move_from || index == root.xiangqi_last_move_to;
+                        visible: r <= 4;
+
+                        background: cell.is-selected ? #7cb342
+                            : cell.is-valid-move ? #fdd835
+                            : is-last-move ? #64b5f6
+                            : #e8c373;
+
+                        border-width: 1px;
+                        border-color: #8b6914;
+
+                        row: r; col: Math.mod(index, 9);
+
+                        TouchArea { clicked => { root.cell_clicked(index); } }
+
+                        Rectangle {
+                            width: 16px; height: 16px; border-radius: 8px;
+                            background: cell.is-valid-move && cell.piece == "" ? #00000040 : transparent;
+                        }
+                        Rectangle {
+                            width: parent.width; height: parent.height;
+                            border-width: 4px;
+                            border-color: cell.is-valid-move && cell.piece != "" ? #00000040 : transparent;
+                            background: transparent;
+                        }
+
+                        Text {
+                            text: cell.piece; font-size: 28px; font-weight: 700;
+                            color: cell.piece-color == "red" ? #cc0000 : #1a1a1a;
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            // River separator
+            Rectangle {
+                width: 450px; height: 30px;
+                background: #c8a84e;
+                border-width: 1px;
+                border-color: #8b6914;
+                Text {
+                    text: "楚  河          漢  界";
+                    font-size: 16px; font-weight: 700;
+                    color: #6b4c14;
+                    horizontal-alignment: center; vertical-alignment: center;
+                }
+            }
+            // Bottom half (Red's side, rows 5-9)
+            Rectangle {
+                width: 450px; height: 250px;
+                GridLayout {
+                    spacing: 0px;
+                    for cell[index] in root.xiangqi_board: Rectangle {
+                        property <int> r: Math.floor(index / 9);
+                        property <bool> is-last-move: index == root.xiangqi_last_move_from || index == root.xiangqi_last_move_to;
+                        visible: r >= 5;
+
+                        background: cell.is-selected ? #7cb342
+                            : cell.is-valid-move ? #fdd835
+                            : is-last-move ? #64b5f6
+                            : #e8c373;
+
+                        border-width: 1px;
+                        border-color: #8b6914;
+
+                        row: r - 5; col: Math.mod(index, 9);
+
+                        TouchArea { clicked => { root.cell_clicked(index); } }
+
+                        Rectangle {
+                            width: 16px; height: 16px; border-radius: 8px;
+                            background: cell.is-valid-move && cell.piece == "" ? #00000040 : transparent;
+                        }
+                        Rectangle {
+                            width: parent.width; height: parent.height;
+                            border-width: 4px;
+                            border-color: cell.is-valid-move && cell.piece != "" ? #00000040 : transparent;
+                            background: transparent;
+                        }
+
+                        Text {
+                            text: cell.piece; font-size: 28px; font-weight: 700;
+                            color: cell.piece-color == "red" ? #cc0000 : #1a1a1a;
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 20px;
+            alignment: center;
+            Button {
+                text: "Return to Menu";
+                height: 40px;
+                clicked => { root.return_to_menu(); }
+            }
+            Button {
+                text: root.music_playing ? "Music: ON" : "Music: OFF";
+                height: 40px;
+                clicked => { root.toggle_music(); }
+            }
+        }
+    }
+}
